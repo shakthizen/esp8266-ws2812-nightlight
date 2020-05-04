@@ -8,7 +8,7 @@
 CRGB LED_STRIP[NUM_LEDS];
 
 DEFINE_GRADIENT_PALETTE(colorTempPalette){
-    0, 255, 80, 0,      //Warmest
+    0, 255, 80, 0,       //Warmest
     180, 255, 255, 255,  //White
     255, 181, 205, 255}; //Bluest
 CRGBPalette16 ColorTemperaturePalette = colorTempPalette;
@@ -57,9 +57,9 @@ void animationBreath()
 }
 
 //================= Chaser
-byte chaserIndex = 0;
 void animationChaser(byte speed = 4, byte size = 4)
 {
+    static byte chaserIndex = 0;
     for (int i = 0; i < NUM_LEDS; i++)
     {
         LED_STRIP[i].fadeLightBy(sin8(chaserIndex + i * 255 / NUM_LEDS / 2 * size));
@@ -72,20 +72,20 @@ void animationChaser(byte speed = 4, byte size = 4)
 }
 
 //================= Meteor
-byte meteorIndex = 0;
-int meteorLeds[NUM_LEDS];
 void animationMeteor(byte speed = 10, byte fadeSpeed = 1)
 {
+    static byte currentPixel = 0;
+    static int pixelValues[NUM_LEDS];
     EVERY_N_MILLISECONDS(1)
     {
         // Fade In
-        if (meteorIndex < NUM_LEDS)
+        if (currentPixel < NUM_LEDS)
         {
-            meteorLeds[meteorIndex] += speed;
-            if (meteorLeds[meteorIndex] >= 255)
+            pixelValues[currentPixel] += speed;
+            if (pixelValues[currentPixel] >= 255)
             {
-                meteorLeds[meteorIndex] = 255;
-                meteorIndex++;
+                pixelValues[currentPixel] = 255;
+                currentPixel++;
             }
         }
 
@@ -93,62 +93,64 @@ void animationMeteor(byte speed = 10, byte fadeSpeed = 1)
         byte m = 0;
         for (int i = 0; i < NUM_LEDS; i++)
         {
-            if (meteorLeds[i] > 0 && i != meteorIndex)
+            if (pixelValues[i] > 0 && i != currentPixel)
             {
-                meteorLeds[i] -= fadeSpeed;
-                if (meteorLeds[i] < 0)
+                pixelValues[i] -= fadeSpeed;
+                if (pixelValues[i] < 0)
                 {
-                    meteorLeds[i] = 0;
+                    pixelValues[i] = 0;
                 }
             }
 
-            if (meteorLeds[i] > m)
+            if (pixelValues[i] > m)
             {
-                m = meteorLeds[i];
+                m = pixelValues[i];
             }
         }
-        if (m == 0 && meteorIndex == NUM_LEDS)
+        if (m == 0 && currentPixel == NUM_LEDS)
         {
-            meteorIndex = 0;
+            currentPixel = 0;
         }
     }
 
     for (int i = 0; i < NUM_LEDS; i++)
     {
-        // leds[i].fadeLightBy(255 - meteorLeds[i]);
-        LED_STRIP[i].nscale8(meteorLeds[i]);
+        // leds[i].fadeLightBy(255 - pixelValues[i]);
+        LED_STRIP[i].nscale8(pixelValues[i]);
     }
 }
 
 //================= Random Fade
 void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
 {
+    static byte currentPixel = 0;
+    static int pixelValues[NUM_LEDS];
     EVERY_N_MILLISECONDS(1)
     {
         // Fade In
-        if (meteorIndex < NUM_LEDS)
+        if (currentPixel < NUM_LEDS)
         {
-            meteorLeds[meteorIndex] += speed;
-            if (meteorLeds[meteorIndex] >= 255)
+            pixelValues[currentPixel] += speed;
+            if (pixelValues[currentPixel] >= 255)
             {
-                meteorLeds[meteorIndex] = 255;
-                meteorIndex = random8(NUM_LEDS);
+                pixelValues[currentPixel] = 255;
+                currentPixel = random8(NUM_LEDS);
             }
         }
         else
         {
-            meteorIndex = 0;
+            currentPixel = 0;
         }
 
         // Fade Out
         for (int i = 0; i < NUM_LEDS; i++)
         {
-            if (meteorLeds[i] > 0 && i != meteorIndex)
+            if (pixelValues[i] > 0 && i != currentPixel)
             {
-                meteorLeds[i] -= fadeSpeed;
-                if (meteorLeds[i] < 0)
+                pixelValues[i] -= fadeSpeed;
+                if (pixelValues[i] < 0)
                 {
-                    meteorLeds[i] = 0;
+                    pixelValues[i] = 0;
                 }
             }
         }
@@ -156,7 +158,111 @@ void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
 
     for (int i = 0; i < NUM_LEDS; i++)
     {
-        LED_STRIP[i].nscale8(meteorLeds[i]);
+        LED_STRIP[i].nscale8(pixelValues[i]);
+    }
+}
+//================= Sinelon
+void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
+{
+    static byte currentPixel = 0;
+    static bool addTo = true;
+    static byte pixelValues[NUM_LEDS];
+    EVERY_N_MILLISECONDS(1)
+    {
+        // Fade In
+        if (currentPixel < NUM_LEDS)
+        {
+            if (speed >= 255 - pixelValues[currentPixel])
+            {
+                pixelValues[currentPixel] = 255;
+                if (currentPixel <= 0)
+                {
+                    addTo = true;
+                }
+                else if (currentPixel >= NUM_LEDS - 1)
+                {
+                    addTo = false;
+                }
+                currentPixel += addTo ? 1 : -1;
+            }
+            else
+            {
+                pixelValues[currentPixel] += speed;
+            }
+        }
+
+        // Fade Out
+        for (byte i = 0; i < NUM_LEDS; i++)
+        {
+            if (i != currentPixel)
+            {
+                if (pixelValues[i] <= fadeSpeed)
+                {
+                    pixelValues[i] = 0;
+                }
+                else
+                {
+                    pixelValues[i] -= fadeSpeed;
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        LED_STRIP[i].nscale8(pixelValues[i]);
+    }
+}
+
+//=================== Fire
+void animationFire(byte cooling = 4, byte heating = 5)
+{
+    static byte heat[NUM_LEDS];
+    byte cooldown;
+
+    EVERY_N_MILLISECONDS(1)
+    {
+        // Step 1.  Cool down every cell a little
+        for (int i = 0; i < NUM_LEDS; i++)
+        {
+            // cooldown = random8(0, ((cooling * 10)) + 2);
+            cooldown = random8(1, cooling);
+
+            if (cooldown > heat[i])
+            {
+                heat[i] = 0;
+            }
+            else
+            {
+                heat[i] -= cooldown;
+            }
+        }
+
+        // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+        for (int k = NUM_LEDS - 1; k >= 1; k--)
+        {
+            // heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
+            heat[k] = (heat[k] + heat[k - 1] + heat[k - 1]) / 3;
+        }
+
+        // Step 3.  Randomly ignite new 'sparks' near the bottom
+
+        byte y = random8(heating);
+        if (y > 150 - heat[0])
+        {
+            heat[0] = 150;
+        }
+        else
+        {
+            heat[0] += y;
+        }
+
+        // Step 4.  Convert heat to LED colors
+        for (int j = 0; j < NUM_LEDS; j++)
+        {
+            LED_STRIP[j] = HeatColor(heat[j]);
+            // LED_STRIP[j].nscale8(heat[j]);
+        }
     }
 }
 
@@ -213,8 +319,7 @@ void initLeds()
 {
     FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(LED_STRIP, NUM_LEDS).setCorrection(TypicalLEDStrip);
     FastLED.setMaxRefreshRate(120);
-    // FastLED.setBrightness(200);
-    // FastLED.setDither(DISABLE_DITHER);
+
     EEPROM.begin(3);
     FXEffect = EEPROM.read(0);
     FXAnimation = EEPROM.read(1);
@@ -269,7 +374,11 @@ void selectFXAnimation()
         animationMeteor();
         break;
     case 5:
-        animationRandomFade();
+        // animationRandomFade();
+        animationSinelon();
+        break;
+    case 6:
+        animationFire();
         break;
 
     default:
