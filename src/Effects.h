@@ -53,7 +53,7 @@ void animationGlitter()
 //================= Breathing
 void animationBreath()
 {
-    fadeLightBy(LED_STRIP, NUM_LEDS, beatsin8(12));
+    nscale8_video(LED_STRIP, NUM_LEDS, beatsin8(12));
 }
 
 //================= Chaser
@@ -121,7 +121,7 @@ void animationMeteor(byte speed = 10, byte fadeSpeed = 1)
 
     for (byte i = 0; i < NUM_LEDS; i++)
     {
-        LED_STRIP[i].nscale8(pixelValues[i]);
+        LED_STRIP[i].nscale8_video(pixelValues[i]);
     }
 }
 
@@ -133,22 +133,14 @@ void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
     EVERY_N_MILLISECONDS(1)
     {
         // Fade In
-        if (index < NUM_LEDS)
+        if (255 - pixelValues[index] <= speed)
         {
-
-            if (255 - pixelValues[index] <= speed)
-            {
-                pixelValues[index] = 255;
-            }
-            else
-            {
-                pixelValues[index] += speed;
-                index = random8(NUM_LEDS);
-            }
+            pixelValues[index] = 255;
+            index = random8(NUM_LEDS);
         }
         else
         {
-            index = 0;
+            pixelValues[index] += speed;
         }
 
         // Fade Out
@@ -170,7 +162,7 @@ void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
 
     for (byte i = 0; i < NUM_LEDS; i++)
     {
-        LED_STRIP[i].nscale8(pixelValues[i]);
+        LED_STRIP[i].nscale8_video(pixelValues[i]);
     }
 }
 //================= Sinelon
@@ -222,7 +214,7 @@ void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
 
     for (byte i = 0; i < NUM_LEDS; i++)
     {
-        LED_STRIP[i].nscale8(pixelValues[i]);
+        LED_STRIP[i].nscale8_video(pixelValues[i]);
     }
 }
 
@@ -273,7 +265,7 @@ void animationFire(byte cooling = 4, byte heating = 5)
         for (byte j = 0; j < NUM_LEDS; j++)
         {
             LED_STRIP[j] = HeatColor(heat[j]);
-            // LED_STRIP[j].nscale8(heat[j]);
+            // LED_STRIP[j].nscale8_video(heat[j]);
         }
     }
 }
@@ -386,10 +378,12 @@ void selectFXAnimation()
         animationMeteor();
         break;
     case 5:
-        // animationRandomFade();
-        animationSinelon();
+        animationRandomFade();
         break;
     case 6:
+        animationSinelon();
+        break;
+    case 7:
         animationFire();
         break;
 
