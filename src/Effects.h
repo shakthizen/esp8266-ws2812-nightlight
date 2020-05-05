@@ -26,6 +26,25 @@ CRGB kelvinToRGB(byte temperature)
 {
     return ColorFromPalette(ColorTemperaturePalette, temperature);
 }
+
+void setBrightness(byte values[], bool direction = false)
+{
+    if (direction)
+    {
+        for (byte i = 0; i < NUM_LEDS; i++)
+        {
+            LED_STRIP[i].nscale8_video(values[i]);
+        }
+    }
+    else
+    {
+        for (byte i = NUM_LEDS - 1; i >= 0; i--)
+        {
+            LED_STRIP[i].nscale8_video(values[i]);
+        }
+    }
+}
+
 //====================================================
 // Animations
 //====================================================
@@ -33,21 +52,19 @@ CRGB kelvinToRGB(byte temperature)
 //================= Glitter
 void animationGlitter()
 {
+    static byte pixelValues[NUM_LEDS];
+
+    for (byte i = 0; i < NUM_LEDS; i++)
+    {
+        pixelValues[i] = 150;
+    }
+
     if (random8() < 50)
     {
         byte glitterLed = random8(NUM_LEDS);
-        for (byte i = 0; i < NUM_LEDS; i++)
-        {
-            if (i != glitterLed)
-            {
-                LED_STRIP[i].fadeLightBy(100);
-            }
-        }
+        pixelValues[glitterLed] = 255;
     }
-    else
-    {
-        fadeLightBy(LED_STRIP, NUM_LEDS, 100);
-    }
+    setBrightness(pixelValues);
 }
 
 //================= Breathing
@@ -57,38 +74,42 @@ void animationBreath()
 }
 
 //================= Chaser
-void animationChaser(byte speed = 4, byte size = 4)
+void animationChaser(byte speed = 4, byte size = 4, bool direction = false)
 {
     static byte offset = 0;
-    for (byte i = 0; i < NUM_LEDS; i++)
-    {
-        LED_STRIP[i].fadeLightBy(sin8(offset + i * 255 / NUM_LEDS / 2 * size));
-    }
+    static byte pixelValues[NUM_LEDS];
 
     EVERY_N_MILLISECONDS(1)
     {
-        offset += speed;
+        offset -= speed;
     };
+
+    for (byte i = 0; i < NUM_LEDS; i++)
+    {
+        pixelValues[i] = (sin8(offset + i * 255 / NUM_LEDS / 2 * size));
+    }
+
+    setBrightness(pixelValues, direction);
 }
 
 //================= Meteor
-void animationMeteor(byte speed = 10, byte fadeSpeed = 1)
+void animationMeteor(byte speed = 10, byte fadeSpeed = 1, bool direction = false)
 {
-    static byte index = 0;
+    static byte offset = 0;
     static byte pixelValues[NUM_LEDS];
     EVERY_N_MILLISECONDS(1)
     {
         // Fade In
-        if (index < NUM_LEDS)
+        if (offset < NUM_LEDS)
         {
-            if (255 - pixelValues[index] <= speed)
+            if (255 - pixelValues[offset] <= speed)
             {
-                pixelValues[index] = 255;
-                index++;
+                pixelValues[offset] = 255;
+                offset++;
             }
             else
             {
-                pixelValues[index] += speed;
+                pixelValues[offset] += speed;
             }
         }
 
@@ -96,7 +117,7 @@ void animationMeteor(byte speed = 10, byte fadeSpeed = 1)
         byte m = 0;
         for (byte i = 0; i < NUM_LEDS; i++)
         {
-            if (i != index)
+            if (i != offset)
             {
                 if (pixelValues[i] <= fadeSpeed)
                 {
@@ -113,40 +134,37 @@ void animationMeteor(byte speed = 10, byte fadeSpeed = 1)
                 m = pixelValues[i];
             }
         }
-        if (m == 0 && index == NUM_LEDS)
+        if (m == 0 && offset == NUM_LEDS)
         {
-            index = 0;
+            offset = 0;
         }
     }
 
-    for (byte i = 0; i < NUM_LEDS; i++)
-    {
-        LED_STRIP[i].nscale8_video(pixelValues[i]);
-    }
+    setBrightness(pixelValues, direction);
 }
 
 //================= Random Fade
 void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
 {
-    static byte index = 0;
+    static byte offset = 0;
     static byte pixelValues[NUM_LEDS];
     EVERY_N_MILLISECONDS(1)
     {
         // Fade In
-        if (255 - pixelValues[index] <= speed)
+        if (255 - pixelValues[offset] <= speed)
         {
-            pixelValues[index] = 255;
-            index = random8(NUM_LEDS);
+            pixelValues[offset] = 255;
+            offset = random8(NUM_LEDS);
         }
         else
         {
-            pixelValues[index] += speed;
+            pixelValues[offset] += speed;
         }
 
         // Fade Out
         for (byte i = 0; i < NUM_LEDS; i++)
         {
-            if (pixelValues[i] > 0 && i != index)
+            if (pixelValues[i] > 0 && i != offset)
             {
                 if (pixelValues[i] <= fadeSpeed)
                 {
@@ -160,45 +178,42 @@ void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
         }
     }
 
-    for (byte i = 0; i < NUM_LEDS; i++)
-    {
-        LED_STRIP[i].nscale8_video(pixelValues[i]);
-    }
+    setBrightness(pixelValues);
 }
 //================= Sinelon
 void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
 {
-    static byte index = 0;
-    static bool addTo = true;
+    static byte offset = 0;
+    static bool direction = true;
     static byte pixelValues[NUM_LEDS];
     EVERY_N_MILLISECONDS(1)
     {
         // Fade In
-        if (index < NUM_LEDS)
+        if (offset < NUM_LEDS)
         {
-            if (speed >= 255 - pixelValues[index])
+            if (speed >= 255 - pixelValues[offset])
             {
-                pixelValues[index] = 255;
-                if (index <= 0)
+                pixelValues[offset] = 255;
+                if (offset <= 0)
                 {
-                    addTo = true;
+                    direction = true;
                 }
-                else if (index >= NUM_LEDS - 1)
+                else if (offset >= NUM_LEDS - 1)
                 {
-                    addTo = false;
+                    direction = false;
                 }
-                index += addTo ? 1 : -1;
+                offset += direction ? 1 : -1;
             }
             else
             {
-                pixelValues[index] += speed;
+                pixelValues[offset] += speed;
             }
         }
 
         // Fade Out
         for (byte i = 0; i < NUM_LEDS; i++)
         {
-            if (i != index)
+            if (i != offset)
             {
                 if (pixelValues[i] <= fadeSpeed)
                 {
@@ -212,16 +227,13 @@ void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
         }
     }
 
-    for (byte i = 0; i < NUM_LEDS; i++)
-    {
-        LED_STRIP[i].nscale8_video(pixelValues[i]);
-    }
+    setBrightness(pixelValues);
 }
 
 //=================== Fire
-void animationFire(byte cooling = 4, byte heating = 5)
+void animationFire(byte cooling = 4, byte heating = 5, bool colored = false)
 {
-    static byte heat[NUM_LEDS];
+    static byte pixelValues[NUM_LEDS];
     byte cooldown;
 
     EVERY_N_MILLISECONDS(1)
@@ -232,13 +244,13 @@ void animationFire(byte cooling = 4, byte heating = 5)
             // cooldown = random8(0, ((cooling * 10)) + 2);
             cooldown = random8(1, cooling);
 
-            if (cooldown > heat[i])
+            if (cooldown > pixelValues[i])
             {
-                heat[i] = 0;
+                pixelValues[i] = 0;
             }
             else
             {
-                heat[i] -= cooldown;
+                pixelValues[i] -= cooldown;
             }
         }
 
@@ -246,26 +258,32 @@ void animationFire(byte cooling = 4, byte heating = 5)
         for (byte k = NUM_LEDS - 1; k >= 1; k--)
         {
             // heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
-            heat[k] = (heat[k] + heat[k - 1] + heat[k - 1]) / 3;
+            pixelValues[k] = (pixelValues[k] + pixelValues[k - 1] + pixelValues[k - 1]) / 3;
         }
 
         // Step 3.  Randomly ignite new 'sparks' near the bottom
 
         byte y = random8(heating);
-        if (y > 150 - heat[0])
+        if (y > 150 - pixelValues[0])
         {
-            heat[0] = 150;
+            pixelValues[0] = 150;
         }
         else
         {
-            heat[0] += y;
+            pixelValues[0] += y;
         }
 
-        // Step 4.  Convert heat to LED colors
-        for (byte j = 0; j < NUM_LEDS; j++)
+        // Apply
+        if (colored)
         {
-            LED_STRIP[j] = HeatColor(heat[j]);
-            // LED_STRIP[j].nscale8_video(heat[j]);
+            for (byte j = 0; j < NUM_LEDS; j++)
+            {
+                LED_STRIP[j] = HeatColor(pixelValues[j]);
+            }
+        }
+        else
+        {
+            setBrightness(pixelValues);
         }
     }
 }
@@ -295,10 +313,21 @@ void effectStaticGradient(byte size = 8)
 }
 
 //==================================================== Animating Gradient
-void effectAnimatingGradient()
+void effectAnimatingGradient(bool direction = false)
 {
     effectStaticGradient();
-    EVERY_N_MILLISECONDS(50) { FXColor++; }
+    EVERY_N_MILLISECONDS(50)
+    {
+        if (direction)
+        {
+            FXColor--;
+        }
+
+        else
+        {
+            FXColor++;
+        }
+    }
 }
 
 //==================================================== Static Rainbow
@@ -308,10 +337,21 @@ void effectStaticRainbow()
 }
 
 //==================================================== Animating Rainbow
-void effectAnimatingRainbow()
+void effectAnimatingRainbow(bool direction = false)
 {
     effectStaticRainbow();
-    EVERY_N_MILLISECONDS(1) { FXColor++; }
+    EVERY_N_MILLISECONDS(1)
+    {
+        if (direction)
+        {
+            FXColor--;
+        }
+
+        else
+        {
+            FXColor++;
+        }
+    }
 }
 
 //==================================================== End
@@ -344,13 +384,19 @@ void selectFXEffect()
         effectStaticGradient();
         break;
     case 3:
-        effectAnimatingGradient();
+        effectAnimatingGradient(false);
         break;
     case 4:
-        effectStaticRainbow();
+        effectAnimatingGradient(true);
         break;
     case 5:
-        effectAnimatingRainbow();
+        effectStaticRainbow();
+        break;
+    case 6:
+        effectAnimatingRainbow(false);
+        break;
+    case 7:
+        effectAnimatingRainbow(true);
         break;
 
     default:
@@ -372,19 +418,28 @@ void selectFXAnimation()
         animationBreath();
         break;
     case 3:
-        animationChaser();
+        animationChaser(4, 4, false);
         break;
     case 4:
-        animationMeteor();
+        animationChaser(4, 4, true);
         break;
     case 5:
-        animationRandomFade();
+        animationMeteor(10, 1, false);
         break;
     case 6:
-        animationSinelon();
+        animationMeteor(10, 1, true);
         break;
     case 7:
-        animationFire();
+        animationRandomFade();
+        break;
+    case 8:
+        animationSinelon();
+        break;
+    case 9:
+        animationFire(4, 5, false);
+        break;
+    case 10:
+        animationFire(4, 5, true);
         break;
 
     default:
