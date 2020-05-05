@@ -4,7 +4,7 @@
 #define DATA_PIN D4
 #define LED_TYPE WS2811
 #define COLOR_ORDER GRB
-#define NUM_LEDS 10
+#define NUM_LEDS 15
 CRGB LED_STRIP[NUM_LEDS];
 
 DEFINE_GRADIENT_PALETTE(colorTempPalette){
@@ -33,12 +33,12 @@ void setBrightness(byte values[], bool direction = false)
     {
         for (byte i = 0; i < NUM_LEDS; i++)
         {
-            LED_STRIP[i].nscale8_video(values[i]);
+            LED_STRIP[NUM_LEDS - i - 1].nscale8_video(values[i]);
         }
     }
     else
     {
-        for (byte i = NUM_LEDS - 1; i >= 0; i--)
+        for (byte i = 0; i < NUM_LEDS; i++)
         {
             LED_STRIP[i].nscale8_video(values[i]);
         }
@@ -263,28 +263,29 @@ void animationFire(byte cooling = 4, byte heating = 5, bool colored = false)
 
         // Step 3.  Randomly ignite new 'sparks' near the bottom
 
+        byte maxHeat = colored ? 150 : 255;
+
         byte y = random8(heating);
-        if (y > 150 - pixelValues[0])
+        if (y > maxHeat - pixelValues[0])
         {
-            pixelValues[0] = 150;
+            pixelValues[0] = maxHeat;
         }
         else
         {
             pixelValues[0] += y;
         }
-
-        // Apply
-        if (colored)
+    }
+    // Apply
+    if (colored)
+    {
+        for (byte j = 0; j < NUM_LEDS; j++)
         {
-            for (byte j = 0; j < NUM_LEDS; j++)
-            {
-                LED_STRIP[j] = HeatColor(pixelValues[j]);
-            }
+            LED_STRIP[j] = HeatColor(pixelValues[j]);
         }
-        else
-        {
-            setBrightness(pixelValues);
-        }
+    }
+    else
+    {
+        setBrightness(pixelValues);
     }
 }
 
@@ -430,10 +431,10 @@ void selectFXAnimation()
         animationMeteor(10, 1, true);
         break;
     case 7:
-        animationRandomFade();
+        animationSinelon(16,3);
         break;
     case 8:
-        animationSinelon();
+        animationRandomFade();
         break;
     case 9:
         animationFire(4, 5, false);
