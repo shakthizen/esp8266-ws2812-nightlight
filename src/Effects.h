@@ -260,40 +260,34 @@ void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
 }
 
 //=================== Fire
-void animationFire(byte cooling = 4, byte heating = 5, bool colored = false)
+void animationFire(byte speed = 8, bool colored = false)
 {
     static byte pixelValues[NUM_LEDS];
-    byte cooldown;
-    byte maxHeat = colored ? 150 : 255;
 
     EVERY_N_MILLISECONDS(1)
     {
-        // Step 1.  Cool down every cell a little
+        // Fade Out
         for (byte i = 0; i < NUM_LEDS; i++)
         {
-            // cooldown = random8(0, ((cooling * 10)) + 2);
-            cooldown = random8(1, cooling);
-
-            pixelValues[i] = subtractUntilMin(pixelValues[i], cooldown);
+            pixelValues[i] = subtractUntilMin(pixelValues[i], 1 + random8(speed));
         }
 
-        // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+        // Blur
         for (byte k = NUM_LEDS - 1; k >= 1; k--)
         {
-            pixelValues[k] = (pixelValues[k] + pixelValues[k - 1] + pixelValues[k - 1]) / 3;
+            pixelValues[k] = (pixelValues[k] + pixelValues[k - 1] + pixelValues[k - 1]) / random8(3, 4);
         }
 
-        // Step 3.  Randomly ignite new 'sparks' near the bottom
-
-        byte y = random8(heating);
-        pixelValues[0] = addUntilMax(pixelValues[0], y, maxHeat);
+        // Fade In
+        pixelValues[0] = addUntilMax(pixelValues[0], random8(speed + 1));
     }
     // Apply
     if (colored)
     {
-        for (byte j = 0; j < NUM_LEDS; j++)
+        for (byte i = 0; i < NUM_LEDS; i++)
         {
-            LED_STRIP[j] = HeatColor(pixelValues[j]);
+            byte mapped = map8(pixelValues[i], 0, 170);
+            LED_STRIP[i] = HeatColor(mapped);
         }
     }
     else
@@ -464,10 +458,10 @@ void selectFXAnimation()
         animationRandomFade();
         break;
     case 13:
-        animationFire(4, 5, false);
+        animationFire(8, false);
         break;
     case 14:
-        animationFire(4, 5, true);
+        animationFire(8, true);
         break;
 
     default:
