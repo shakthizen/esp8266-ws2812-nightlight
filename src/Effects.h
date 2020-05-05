@@ -4,7 +4,7 @@
 #define DATA_PIN D4
 #define LED_TYPE WS2811
 #define COLOR_ORDER GRB
-#define NUM_LEDS 15
+#define NUM_LEDS 10
 CRGB LED_STRIP[NUM_LEDS];
 
 DEFINE_GRADIENT_PALETTE(colorTempPalette){
@@ -45,6 +45,38 @@ void setBrightness(byte values[], bool direction = false)
     }
 }
 
+byte addUntilMax(byte currentValue, byte amount, byte maximum = 255)
+{
+    if (currentValue < maximum)
+    {
+        if (maximum - currentValue <= amount)
+        {
+            currentValue = maximum;
+        }
+        else
+        {
+            currentValue += amount;
+        }
+    }
+    return currentValue;
+}
+
+byte subtractUntilMin(byte currentValue, byte amount, byte minimum = 0)
+{
+    if (currentValue > minimum)
+    {
+        if (currentValue - minimum <= amount)
+        {
+            currentValue = minimum;
+        }
+        else
+        {
+            currentValue -= amount;
+        }
+    }
+    return currentValue;
+}
+
 //====================================================
 // Animations
 //====================================================
@@ -71,6 +103,42 @@ void animationGlitter()
 void animationBreath()
 {
     nscale8_video(LED_STRIP, NUM_LEDS, beatsin8(12));
+}
+
+//================= Wipe
+void animationWipe(byte speed = 1, bool direction = false)
+{
+    static byte offset = 0;
+    static byte pixelValues[NUM_LEDS];
+    static bool state = true;
+
+    EVERY_N_MILLISECONDS(1)
+    {
+        if (state)
+        {
+
+            pixelValues[offset] = addUntilMax(pixelValues[offset], speed);
+            if (pixelValues[offset] == 255)
+            {
+                offset++;
+            }
+        }
+        else
+        {
+            pixelValues[offset] = subtractUntilMin(pixelValues[offset], speed);
+            if (pixelValues[offset] == 0)
+            {
+                offset++;
+            }
+        }
+        if (offset >= NUM_LEDS)
+        {
+            offset = 0;
+            state = !state;
+        }
+    };
+
+    setBrightness(pixelValues, direction);
 }
 
 //================= Chaser
@@ -102,39 +170,22 @@ void animationMeteor(byte speed = 10, byte fadeSpeed = 1, bool direction = false
         // Fade In
         if (offset < NUM_LEDS)
         {
-            if (255 - pixelValues[offset] <= speed)
+            pixelValues[offset] = addUntilMax(pixelValues[offset], speed);
+            if (pixelValues[offset] == 255)
             {
-                pixelValues[offset] = 255;
                 offset++;
-            }
-            else
-            {
-                pixelValues[offset] += speed;
             }
         }
 
         // Fade Out
-        byte m = 0;
         for (byte i = 0; i < NUM_LEDS; i++)
         {
             if (i != offset)
             {
-                if (pixelValues[i] <= fadeSpeed)
-                {
-                    pixelValues[i] = 0;
-                }
-                else
-                {
-                    pixelValues[i] -= fadeSpeed;
-                }
-            }
-
-            if (pixelValues[i] > m)
-            {
-                m = pixelValues[i];
+                pixelValues[i] = subtractUntilMin(pixelValues[i], fadeSpeed);
             }
         }
-        if (m == 0 && offset == NUM_LEDS)
+        if (offset == NUM_LEDS && pixelValues[offset - 1] == 0)
         {
             offset = 0;
         }
@@ -151,14 +202,10 @@ void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
     EVERY_N_MILLISECONDS(1)
     {
         // Fade In
-        if (255 - pixelValues[offset] <= speed)
+        pixelValues[offset] = addUntilMax(pixelValues[offset], speed);
+        if (pixelValues[offset] == 255)
         {
-            pixelValues[offset] = 255;
             offset = random8(NUM_LEDS);
-        }
-        else
-        {
-            pixelValues[offset] += speed;
         }
 
         // Fade Out
@@ -166,14 +213,7 @@ void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
         {
             if (pixelValues[i] > 0 && i != offset)
             {
-                if (pixelValues[i] <= fadeSpeed)
-                {
-                    pixelValues[i] = 0;
-                }
-                else
-                {
-                    pixelValues[i] -= fadeSpeed;
-                }
+                pixelValues[i] = subtractUntilMin(pixelValues[i], fadeSpeed);
             }
         }
     }
@@ -191,9 +231,9 @@ void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
         // Fade In
         if (offset < NUM_LEDS)
         {
-            if (speed >= 255 - pixelValues[offset])
+            pixelValues[offset] = addUntilMax(pixelValues[offset], speed);
+            if (pixelValues[offset] == 255)
             {
-                pixelValues[offset] = 255;
                 if (offset <= 0)
                 {
                     direction = true;
@@ -204,10 +244,6 @@ void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
                 }
                 offset += direction ? 1 : -1;
             }
-            else
-            {
-                pixelValues[offset] += speed;
-            }
         }
 
         // Fade Out
@@ -215,14 +251,7 @@ void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
         {
             if (i != offset)
             {
-                if (pixelValues[i] <= fadeSpeed)
-                {
-                    pixelValues[i] = 0;
-                }
-                else
-                {
-                    pixelValues[i] -= fadeSpeed;
-                }
+                pixelValues[i] = subtractUntilMin(pixelValues[i], fadeSpeed);
             }
         }
     }
@@ -235,6 +264,7 @@ void animationFire(byte cooling = 4, byte heating = 5, bool colored = false)
 {
     static byte pixelValues[NUM_LEDS];
     byte cooldown;
+    byte maxHeat = colored ? 150 : 255;
 
     EVERY_N_MILLISECONDS(1)
     {
@@ -244,36 +274,19 @@ void animationFire(byte cooling = 4, byte heating = 5, bool colored = false)
             // cooldown = random8(0, ((cooling * 10)) + 2);
             cooldown = random8(1, cooling);
 
-            if (cooldown > pixelValues[i])
-            {
-                pixelValues[i] = 0;
-            }
-            else
-            {
-                pixelValues[i] -= cooldown;
-            }
+            pixelValues[i] = subtractUntilMin(pixelValues[i], cooldown);
         }
 
         // Step 2.  Heat from each cell drifts 'up' and diffuses a little
         for (byte k = NUM_LEDS - 1; k >= 1; k--)
         {
-            // heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
             pixelValues[k] = (pixelValues[k] + pixelValues[k - 1] + pixelValues[k - 1]) / 3;
         }
 
         // Step 3.  Randomly ignite new 'sparks' near the bottom
 
-        byte maxHeat = colored ? 150 : 255;
-
         byte y = random8(heating);
-        if (y > maxHeat - pixelValues[0])
-        {
-            pixelValues[0] = maxHeat;
-        }
-        else
-        {
-            pixelValues[0] += y;
-        }
+        pixelValues[0] = addUntilMax(pixelValues[0], y, maxHeat);
     }
     // Apply
     if (colored)
@@ -369,6 +382,8 @@ void initLeds()
     FXEffect = EEPROM.read(0);
     FXAnimation = EEPROM.read(1);
     FXColor = EEPROM.read(2);
+
+    delay(50);
 }
 
 void selectFXEffect()
@@ -419,27 +434,39 @@ void selectFXAnimation()
         animationBreath();
         break;
     case 3:
-        animationChaser(4, 4, false);
+        animationWipe(8, false);
         break;
     case 4:
-        animationChaser(4, 4, true);
+        animationWipe(8, true);
         break;
     case 5:
-        animationMeteor(10, 1, false);
+        animationWipe(16, false);
         break;
     case 6:
-        animationMeteor(10, 1, true);
+        animationWipe(16, true);
         break;
     case 7:
-        animationSinelon(16,3);
+        animationChaser(4, 4, false);
         break;
     case 8:
-        animationRandomFade();
+        animationChaser(4, 4, true);
         break;
     case 9:
-        animationFire(4, 5, false);
+        animationMeteor(10, 1, false);
         break;
     case 10:
+        animationMeteor(10, 1, true);
+        break;
+    case 11:
+        animationSinelon(16, 3);
+        break;
+    case 12:
+        animationRandomFade();
+        break;
+    case 13:
+        animationFire(4, 5, false);
+        break;
+    case 14:
         animationFire(4, 5, true);
         break;
 
@@ -471,10 +498,10 @@ void saveColorState()
 
 void saveState()
 {
-    saveEffectState();
-    saveAnimationState();
-    saveColorState();
-    // EEPROM.commit();
+    EEPROM.write(0, FXEffect);
+    EEPROM.write(1, FXAnimation);
+    EEPROM.write(2, FXColor);
+    EEPROM.commit();
 }
 
 //===============================================================
@@ -495,25 +522,21 @@ void playEffect()
 void nextEffect()
 {
     FXEffect++;
-    // saveEffectState();
 }
 
 void previousEffect()
 {
     FXEffect--;
-    // saveEffectState();
 }
 
 void nextAnimation()
 {
     FXAnimation++;
-    // saveAnimationState();
 }
 
 void previousAnimation()
 {
     FXAnimation--;
-    // saveAnimationState();
 }
 
 void changeColorBy(byte v)
