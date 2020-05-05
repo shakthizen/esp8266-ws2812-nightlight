@@ -267,10 +267,11 @@ void animationFire(byte speed = 8, bool colored = false)
     EVERY_N_MILLISECONDS(1)
     {
         // Fade Out
-        for (byte i = 0; i < NUM_LEDS; i++)
+        for (byte i = 1; i < NUM_LEDS; i++)
         {
             pixelValues[i] = subtractUntilMin(pixelValues[i], 1 + random8(speed));
         }
+        pixelValues[0] = subtractUntilMin(pixelValues[0], 1 + random8(speed), 20);
 
         // Blur
         for (byte k = NUM_LEDS - 1; k >= 1; k--)
@@ -279,14 +280,14 @@ void animationFire(byte speed = 8, bool colored = false)
         }
 
         // Fade In
-        pixelValues[0] = addUntilMax(pixelValues[0], random8(speed + 1));
+        pixelValues[0] = addUntilMax(pixelValues[0], random8(speed + 2));
     }
     // Apply
     if (colored)
     {
         for (byte i = 0; i < NUM_LEDS; i++)
         {
-            byte mapped = map8(pixelValues[i], 0, 170);
+            byte mapped = map8(pixelValues[i], 0, 160);
             LED_STRIP[i] = HeatColor(mapped);
         }
     }
