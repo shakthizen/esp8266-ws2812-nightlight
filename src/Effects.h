@@ -45,6 +45,36 @@ void setBrightness(byte values[], bool direction = false)
     }
 }
 
+void decreaseBrightnessBy(byte *pixelValues, byte amount = 1, byte minimum = 0)
+{
+    for (byte i = 0; i < NUM_LEDS; i++)
+    {
+        if (pixelValues[i] - minimum < amount)
+        {
+            pixelValues[i] = minimum;
+        }
+        else
+        {
+            pixelValues[i] -= amount;
+        }
+    }
+}
+
+void increaseBrightnessBy(byte *pixelValues, byte amount = 1, byte maximum = 255)
+{
+    for (byte i = 0; i < NUM_LEDS; i++)
+    {
+        if (maximum - pixelValues[i] < amount)
+        {
+            pixelValues[i] = maximum;
+        }
+        else
+        {
+            pixelValues[i] += amount;
+        }
+    }
+}
+
 byte addUntilMax(byte currentValue, byte amount, byte maximum = 255)
 {
     if (currentValue < maximum)
@@ -100,9 +130,9 @@ void animationGlitter()
 }
 
 //================= Breathing
-void animationBreath()
+void animationBreath(byte speed = 12)
 {
-    nscale8_video(LED_STRIP, NUM_LEDS, beatsin8(12));
+    nscale8_video(LED_STRIP, NUM_LEDS, beatsin8(speed));
 }
 
 //================= Wipe
@@ -150,12 +180,11 @@ void animationChaser(byte speed = 4, byte size = 4, bool direction = false)
     EVERY_N_MILLISECONDS(1)
     {
         offset -= speed;
+        for (byte i = 0; i < NUM_LEDS; i++)
+        {
+            pixelValues[i] = (sin8(offset + i * 255 / NUM_LEDS / 2 * size));
+        }
     };
-
-    for (byte i = 0; i < NUM_LEDS; i++)
-    {
-        pixelValues[i] = (sin8(offset + i * 255 / NUM_LEDS / 2 * size));
-    }
 
     setBrightness(pixelValues, direction);
 }
@@ -167,6 +196,8 @@ void animationMeteor(byte speed = 10, byte fadeSpeed = 1, bool direction = false
     static byte pixelValues[NUM_LEDS];
     EVERY_N_MILLISECONDS(1)
     {
+        // Fade Out
+        decreaseBrightnessBy(pixelValues, fadeSpeed);
         // Fade In
         if (offset < NUM_LEDS)
         {
@@ -177,14 +208,6 @@ void animationMeteor(byte speed = 10, byte fadeSpeed = 1, bool direction = false
             }
         }
 
-        // Fade Out
-        for (byte i = 0; i < NUM_LEDS; i++)
-        {
-            if (i != offset)
-            {
-                pixelValues[i] = subtractUntilMin(pixelValues[i], fadeSpeed);
-            }
-        }
         if (offset == NUM_LEDS && pixelValues[offset - 1] == 0)
         {
             offset = 0;
@@ -201,20 +224,14 @@ void animationRandomFade(byte speed = 8, byte fadeSpeed = 2)
     static byte pixelValues[NUM_LEDS];
     EVERY_N_MILLISECONDS(1)
     {
+
+        // Fade Out
+        decreaseBrightnessBy(pixelValues, fadeSpeed);
         // Fade In
         pixelValues[offset] = addUntilMax(pixelValues[offset], speed);
         if (pixelValues[offset] == 255)
         {
             offset = random8(NUM_LEDS);
-        }
-
-        // Fade Out
-        for (byte i = 0; i < NUM_LEDS; i++)
-        {
-            if (pixelValues[i] > 0 && i != offset)
-            {
-                pixelValues[i] = subtractUntilMin(pixelValues[i], fadeSpeed);
-            }
         }
     }
 
@@ -228,6 +245,9 @@ void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
     static byte pixelValues[NUM_LEDS];
     EVERY_N_MILLISECONDS(1)
     {
+        // Fade Out
+        decreaseBrightnessBy(pixelValues, fadeSpeed);
+
         // Fade In
         if (offset < NUM_LEDS)
         {
@@ -243,15 +263,6 @@ void animationSinelon(byte speed = 16, byte fadeSpeed = 4)
                     direction = false;
                 }
                 offset += direction ? 1 : -1;
-            }
-        }
-
-        // Fade Out
-        for (byte i = 0; i < NUM_LEDS; i++)
-        {
-            if (i != offset)
-            {
-                pixelValues[i] = subtractUntilMin(pixelValues[i], fadeSpeed);
             }
         }
     }
@@ -322,20 +333,12 @@ void effectStaticGradient(byte size = 8)
 }
 
 //==================================================== Animating Gradient
-void effectAnimatingGradient(bool direction = false)
+void effectAnimatingGradient(byte speed = 1)
 {
     effectStaticGradient();
     EVERY_N_MILLISECONDS(50)
     {
-        if (direction)
-        {
-            FXColor--;
-        }
-
-        else
-        {
-            FXColor++;
-        }
+        FXColor -= speed;
     }
 }
 
@@ -346,20 +349,12 @@ void effectStaticRainbow()
 }
 
 //==================================================== Animating Rainbow
-void effectAnimatingRainbow(bool direction = false)
+void effectAnimatingRainbow(byte speed = 1)
 {
     effectStaticRainbow();
-    EVERY_N_MILLISECONDS(1)
+    EVERY_N_MILLISECONDS(10)
     {
-        if (direction)
-        {
-            FXColor--;
-        }
-
-        else
-        {
-            FXColor++;
-        }
+        FXColor -= speed;
     }
 }
 
@@ -395,19 +390,19 @@ void selectFXEffect()
         effectStaticGradient();
         break;
     case 3:
-        effectAnimatingGradient(false);
+        effectAnimatingGradient(1);
         break;
     case 4:
-        effectAnimatingGradient(true);
+        effectAnimatingGradient(-1);
         break;
     case 5:
         effectStaticRainbow();
         break;
     case 6:
-        effectAnimatingRainbow(false);
+        effectAnimatingRainbow(1);
         break;
     case 7:
-        effectAnimatingRainbow(true);
+        effectAnimatingRainbow(-1);
         break;
 
     default:
@@ -426,7 +421,7 @@ void selectFXAnimation()
         animationGlitter();
         break;
     case 2:
-        animationBreath();
+        animationBreath(12);
         break;
     case 3:
         animationWipe(8, false);
@@ -447,16 +442,16 @@ void selectFXAnimation()
         animationChaser(4, 4, true);
         break;
     case 9:
-        animationMeteor(10, 1, false);
+        animationMeteor(12, 1, false);
         break;
     case 10:
-        animationMeteor(10, 1, true);
+        animationMeteor(12, 1, true);
         break;
     case 11:
-        animationSinelon(16, 3);
+        animationSinelon(12, 2);
         break;
     case 12:
-        animationRandomFade();
+        animationRandomFade(8, 2);
         break;
     case 13:
         animationFire(8, false);
