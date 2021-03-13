@@ -2,9 +2,10 @@
 #include <EEPROM.h>
 
 #define DATA_PIN D4
+#define BTN D3
 #define LED_TYPE WS2811
 #define COLOR_ORDER GRB
-#define NUM_LEDS 10
+#define NUM_LEDS 30
 CRGB LED_STRIP[NUM_LEDS];
 
 DEFINE_GRADIENT_PALETTE(colorTempPalette){

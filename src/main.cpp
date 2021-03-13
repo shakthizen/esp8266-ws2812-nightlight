@@ -2,7 +2,7 @@
 #include <OneButton.h>
 #include <Effects.h>
 
-OneButton btn(D3, true);
+OneButton btn(BTN, true);
 void handleClick();
 void handleDoubleClick();
 void handleDuringLongpress();
