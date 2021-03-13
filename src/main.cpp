@@ -3,29 +3,6 @@
 #include <Effects.h>
 
 OneButton btn(BTN, true);
-void handleClick();
-void handleDoubleClick();
-void handleDuringLongpress();
-void handleLongpressStop();
-
-void setup()
-{
-  WiFi.mode(WIFI_OFF);
-  WiFi.setSleepMode(WIFI_LIGHT_SLEEP);
-  WiFi.forceSleepBegin();
-
-  btn.attachClick(handleClick);
-  btn.attachDoubleClick(handleDoubleClick);
-  btn.attachDuringLongPress(handleDuringLongpress);
-  btn.attachLongPressStop(handleLongpressStop);
-  initLeds();
-}
-
-void loop()
-{
-  playEffect();
-  btn.tick();
-}
 
 void handleDoubleClick()
 {
@@ -45,4 +22,25 @@ void handleDuringLongpress()
 void handleLongpressStop()
 {
   saveColorState();
+}
+
+void setup()
+{
+  WiFi.mode(WIFI_OFF);
+  WiFi.setSleepMode(WIFI_LIGHT_SLEEP);
+  WiFi.forceSleepBegin();
+  WiFi.mode(WIFI_AP);
+  
+
+  btn.attachClick(handleClick);
+  btn.attachDoubleClick(handleDoubleClick);
+  btn.attachDuringLongPress(handleDuringLongpress);
+  btn.attachLongPressStop(handleLongpressStop);
+  initLeds();
+}
+
+void loop()
+{
+  playEffect();
+  btn.tick();
 }
