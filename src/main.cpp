@@ -2,7 +2,7 @@
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-#include <FS.h>
+#include <LittleFS.h>
 
 #include <OneButton.h>
 #include <Effects.h>
@@ -16,34 +16,7 @@ IPAddress apIP(192, 168, 11, 1);
 
 DNSServer dnsServer;
 
-ESP8266WebServer webServer(80);
-
-void initWiFi()
-{
-  WiFi.mode(WIFI_AP);
-  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-  WiFi.softAP(ssid);
-
-  // if DNSServer is started with "*" for domain name, it will reply with
-  // provided IP to all DNS request
-  dnsServer.start(DNS_PORT, "*", apIP);
-
-  //start debug port
-  Serial.print("\n");
-  Serial.setDebugOutput(true);
-  SPIFFS.begin();
-
-  //redirect all traffic to index.html
-  webServer.onNotFound([]() {
-    if (!handleFileRead(webServer.uri()))
-    {
-      const char *metaRefreshStr = "<head><meta http-equiv=\"refresh\" content=\"0; url=http://192.168.11.1/index.html\" /></head><body><p>redirecting...</p></body>";
-      webServer.send(200, "text/html", metaRefreshStr);
-    }
-  });
-
-  webServer.begin();
-}
+ESP8266WebServer server(80);
 
 void handleDoubleClick()
 {
@@ -67,7 +40,7 @@ void handleLongpressStop()
 
 String getContentType(String filename)
 {
-  if (webServer.hasArg("download"))
+  if (server.hasArg("download"))
     return "application/octet-stream";
   else if (filename.endsWith(".htm"))
     return "text/html";
@@ -104,16 +77,62 @@ bool handleFileRead(String path)
     path += "index.html";
   String contentType = getContentType(path);
   String pathWithGz = path + ".gz";
-  if (SPIFFS.exists(pathWithGz) || SPIFFS.exists(path))
+  if (LittleFS.exists(pathWithGz) || LittleFS.exists(path))
   {
-    if (SPIFFS.exists(pathWithGz))
+    if (LittleFS.exists(pathWithGz))
       path += ".gz";
-    File file = SPIFFS.open(path, "r");
-    size_t sent = webServer.streamFile(file, contentType);
+    File file = LittleFS.open(path, "r");
+    size_t sent = server.streamFile(file, contentType);
     file.close();
     return true;
   }
   return false;
+}
+void initWiFi()
+{
+  WiFi.mode(WIFI_AP);
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+  WiFi.softAP(ssid);
+
+  // if DNSServer is started with "*" for domain name, it will reply with
+  // provided IP to all DNS request
+  dnsServer.start(DNS_PORT, "*", apIP);
+
+  //start debug port
+  Serial.print("\n");
+  Serial.setDebugOutput(true);
+  LittleFS.begin();
+
+  // handle effect controls
+  server.on("/api/status", []() {
+    String allStatus = String(FXEffect) + "," + String(FXAnimation) + "," + String(FXColor);
+    server.send(200, "text/html", allStatus);
+  });
+
+  server.on("/api/set", []() {
+    byte args = server.args();
+    if (args == 2)
+    {
+      FXEffect = server.arg("fxeffect").toInt();
+      FXAnimation = server.arg("fxanimation").toInt();
+    }
+    else if (args == 1)
+    {
+      changeColorBy(server.arg("fxcolor").toInt());
+    }
+    server.send(200, "text/html", "DONE");
+  });
+
+  //redirect all traffic to index.html
+  server.onNotFound([]() {
+    if (!handleFileRead(server.uri()))
+    {
+      const char *metaRefreshStr = "<head><meta http-equiv=\"refresh\" content=\"0; url=http://192.168.11.1/index.html\" /></head><body><p>redirecting...</p></body>";
+      server.send(200, "text/html", metaRefreshStr);
+    }
+  });
+
+  server.begin();
 }
 
 void setup()
@@ -129,7 +148,7 @@ void setup()
 void loop()
 {
   dnsServer.processNextRequest();
-  webServer.handleClient();
+  server.handleClient();
   playEffect();
   btn.tick();
 }
