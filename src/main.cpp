@@ -1,7 +1,9 @@
 #include <ESP8266WiFi.h>
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
+
+#include <ESPAsyncTCP.h>
 #include <ESP8266mDNS.h>
+#include <ESPAsyncWebServer.h>
+
 #include <LittleFS.h>
 
 #include <OneButton.h>
@@ -14,9 +16,7 @@ const char *ssid = "SSLightString";
 
 IPAddress apIP(192, 168, 11, 1);
 
-DNSServer dnsServer;
-
-ESP8266WebServer server(80);
+AsyncWebServer server(80);
 
 void handleDoubleClick()
 {
@@ -40,9 +40,7 @@ void handleLongpressStop()
 
 String getContentType(String filename)
 {
-  if (server.hasArg("download"))
-    return "application/octet-stream";
-  else if (filename.endsWith(".htm"))
+  if (filename.endsWith(".htm"))
     return "text/html";
   else if (filename.endsWith(".html"))
     return "text/html";
@@ -69,25 +67,6 @@ String getContentType(String filename)
   return "text/plain";
 }
 
-//Given a file path, look for it in the SPIFFS file storage. Returns true if found, returns false if not found.
-bool handleFileRead(String path)
-{
-  Serial.println("handleFileRead: " + path);
-  if (path.endsWith("/"))
-    path += "index.html";
-  String contentType = getContentType(path);
-  String pathWithGz = path + ".gz";
-  if (LittleFS.exists(pathWithGz) || LittleFS.exists(path))
-  {
-    if (LittleFS.exists(pathWithGz))
-      path += ".gz";
-    File file = LittleFS.open(path, "r");
-    size_t sent = server.streamFile(file, contentType);
-    file.close();
-    return true;
-  }
-  return false;
-}
 void initWiFi()
 {
   WiFi.mode(WIFI_AP);
@@ -96,7 +75,7 @@ void initWiFi()
 
   // if DNSServer is started with "*" for domain name, it will reply with
   // provided IP to all DNS request
-  dnsServer.start(DNS_PORT, "*", apIP);
+  MDNS.addService("http", "tcp", 80);
 
   //start debug port
   Serial.print("\n");
@@ -104,32 +83,29 @@ void initWiFi()
   LittleFS.begin();
 
   // handle effect controls
-  server.on("/api/status", []() {
+  server.on("/api/status", HTTP_GET, [](AsyncWebServerRequest *request) {
     String allStatus = String(FXEffect) + "," + String(FXAnimation) + "," + String(FXColor);
-    server.send(200, "text/html", allStatus);
+    request->send(200, "text/plain", allStatus);
   });
 
-  server.on("/api/set", []() {
-    byte args = server.args();
+  server.on("/api/set", HTTP_GET, [](AsyncWebServerRequest *request) {
+    byte args = request->args();
     if (args == 2)
     {
-      FXEffect = server.arg("fxeffect").toInt();
-      FXAnimation = server.arg("fxanimation").toInt();
+      FXEffect = request->arg("fxeffect").toInt();
+      FXAnimation = request->arg("fxanimation").toInt();
     }
     else if (args == 1)
     {
-      changeColorBy(server.arg("fxcolor").toInt());
+      changeColorBy(request->arg("fxcolor").toInt());
     }
-    server.send(200, "text/html", "DONE");
+    request->send(200, "text/plain", "DONE");
   });
 
-  //redirect all traffic to index.html
-  server.onNotFound([]() {
-    if (!handleFileRead(server.uri()))
-    {
-      const char *metaRefreshStr = "<head><meta http-equiv=\"refresh\" content=\"0; url=http://192.168.11.1/index.html\" /></head><body><p>redirecting...</p></body>";
-      server.send(200, "text/html", metaRefreshStr);
-    }
+  server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
+
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->send(404, "text/plain", "Not found");
   });
 
   server.begin();
@@ -147,8 +123,6 @@ void setup()
 
 void loop()
 {
-  dnsServer.processNextRequest();
-  server.handleClient();
   playEffect();
   btn.tick();
 }
