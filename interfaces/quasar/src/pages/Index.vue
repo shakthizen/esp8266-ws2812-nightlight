@@ -136,7 +136,7 @@ export default {
     fetchStatus: function() {
       this.overlay = true;
       this.$axios
-        .get("/api/status")
+        .get("http://192.168.11.1/api/status")
         .then(response => {
           let params = response.data.split(",");
           this.fxEffect = this.fxEffects[params[0]];
@@ -153,7 +153,7 @@ export default {
       this.overlay = true;
       this.$axios
         .get(
-          `/api/set?fxeffect=${this.fxEffectIndex}&fxanimation=${this.fxAnimationIndex}`
+          `http://192.168.11.1/api/set?fxeffect=${this.fxEffectIndex}&fxanimation=${this.fxAnimationIndex}`
         )
         .then(() => {
           this.overlay = false;
@@ -166,7 +166,7 @@ export default {
     setColor: function(amount) {
       this.overlay = true;
       this.$axios
-        .get(`/api/set?fxcolor=${amount}`)
+        .get(`http://192.168.11.1/api/set?fxcolor=${amount}`)
         .then(() => {
           this.overlay = false;
         })

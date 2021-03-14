@@ -1,8 +1,8 @@
 #include <FastLED.h>
 #include <EEPROM.h>
 
-#define DATA_PIN D4
-#define BTN D3
+#define DATA_PIN 2 //D4
+#define BTN 0 //D3
 #define LED_TYPE WS2811
 #define COLOR_ORDER GRB
 #define NUM_LEDS 30
